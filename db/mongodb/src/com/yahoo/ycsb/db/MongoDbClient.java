@@ -62,6 +62,13 @@ public class MongoDbClient extends DB {
         }
 
         try {
+
+            if (url == null || "".equals(url) || database == null
+                    || "".equals(database)) {
+                throw new RuntimeException(
+                        "mongodb.url or mongodb.database not specified!");
+            }
+
             // strip out prefix since Java driver doesn't currently support
             // standard
             // connection format URL yet
@@ -73,7 +80,8 @@ public class MongoDbClient extends DB {
             mongo = new Mongo(new DBAddress(url));
         } catch (Exception e) {
             log("error", "Could not initialize MongoDb connection:  " + e, e);
-            return;
+            throw new DBException("Could not initialize MongoDb connection:  "
+                    + e, e);
         }
 
     }
