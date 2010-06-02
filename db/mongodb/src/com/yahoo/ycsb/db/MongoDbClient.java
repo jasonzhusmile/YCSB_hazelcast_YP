@@ -67,7 +67,7 @@ public class MongoDbClient extends DB {
             // connection format URL yet
             // http://www.mongodb.org/display/DOCS/Connections
             if (url.startsWith("mongodb://")) {
-                url = url.substring(10);
+                url = url.substring(10) + "/" + database;
             }
 
             mongo = new Mongo(new DBAddress(url));
