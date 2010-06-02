@@ -15,9 +15,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBAddress;
 import com.mongodb.DBCollection;
@@ -29,19 +26,17 @@ import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
 /**
- * MongoDB client for YCSB framework.
+ * MongoDB client for YCSB framework. <br/>
  * 
- * Properties to set:
+ * Properties to set:<br/>
  * 
- * mongodb.url=mongodb://localhost:27017 mongodb.database=ycsb
+ * mongodb.url=mongodb://localhost:27017 <br/>
+ * mongodb.database=ycsb <br/>
  * 
  * @author ypai
  * 
  */
 public class MongoDbClient extends DB {
-
-    private static final Logger logger = LoggerFactory
-            .getLogger(MongoDbClient.class);
 
     private Mongo mongo;
     private WriteConcern writeConcern = WriteConcern.NORMAL;
@@ -76,10 +71,8 @@ public class MongoDbClient extends DB {
             }
 
             mongo = new Mongo(new DBAddress(url));
-        } catch (Exception e1) {
-            logger.error(
-                    "Could not initialize MongoDB connection pool for Loader: "
-                            + e1, e1);
+        } catch (Exception e) {
+            log("error", "Could not initialize MongoDb connection:  " + e, e);
             return;
         }
 
@@ -110,7 +103,7 @@ public class MongoDbClient extends DB {
 
             return (Integer) errors.get("n") == 1 ? 0 : 1;
         } catch (Exception e) {
-            logger.error(e + "", e);
+            log("error", e + "", e);
             return 1;
         } finally {
             if (db != null) {
@@ -151,7 +144,7 @@ public class MongoDbClient extends DB {
             return (Boolean) errors.get("ok") && errors.get("err") == null ? 0
                     : 1;
         } catch (Exception e) {
-            logger.error(e + "", e);
+            log("error", e + "", e);
             return 1;
         } finally {
             if (db != null) {
@@ -187,9 +180,8 @@ public class MongoDbClient extends DB {
 
             DBObject queryResult = null;
             if (!returnAllFields) {
-                Iterator<String> iter = fields.iterator();
-                while (iter.hasNext()) {
-                    fieldsToReturn.put(iter.next(), 1);
+                for (String fieldName : fields) {
+                    fieldsToReturn.put(fieldName, 1);
                 }
                 queryResult = collection.findOne(q, fieldsToReturn);
             } else {
@@ -201,7 +193,7 @@ public class MongoDbClient extends DB {
             }
             return queryResult != null ? 0 : 1;
         } catch (Exception e) {
-            logger.error(e + "", e);
+            log("error", e + "", e);
             return 1;
         } finally {
             if (db != null) {
@@ -251,7 +243,7 @@ public class MongoDbClient extends DB {
 
             return (Integer) errors.get("n") == 1 ? 0 : 1;
         } catch (Exception e) {
-            logger.error(e + "", e);
+            log("error", e + "", e);
             return 1;
         } finally {
             if (db != null) {
@@ -283,7 +275,20 @@ public class MongoDbClient extends DB {
             // { "_id":{"$gte":startKey, "$lte":{"appId":key+"\uFFFF"}} }
             DBObject scanRange = new BasicDBObject().append("$gte", startkey);
             DBObject q = new BasicDBObject().append("_id", scanRange);
-            DBCursor cursor = collection.find(q).limit(recordcount);
+
+            DBCursor cursor = null;
+
+            DBObject fieldsToReturn = new BasicDBObject();
+            boolean returnAllFields = fields == null;
+            if (returnAllFields) {
+                cursor = collection.find(q).limit(recordcount);
+            } else {
+                for (String fieldName : fields) {
+                    fieldsToReturn.put(fieldName, 1);
+                }
+                cursor = collection.find(q, fieldsToReturn).limit(recordcount);
+            }
+
             while (cursor.hasNext()) {
                 // toMap() returns a Map, but result.add() expects a
                 // Map<String,String>. Hence, the suppress warnings.
@@ -292,7 +297,7 @@ public class MongoDbClient extends DB {
 
             return 0;
         } catch (Exception e) {
-            logger.error(e + "", e);
+            log("error", e + "", e);
             return 1;
         } finally {
             if (db != null) {
@@ -300,6 +305,24 @@ public class MongoDbClient extends DB {
             }
         }
 
+    }
+
+    /**
+     * Simple logging method.
+     * 
+     * @param level
+     * @param message
+     * @param e
+     */
+    protected void log(String level, String message, Exception e) {
+        System.out.println(message);
+        if ("error".equals(level)) {
+            System.err.println(message);
+        }
+        if (e != null) {
+            e.printStackTrace(System.out);
+            e.printStackTrace(System.err);
+        }
     }
 
 }
