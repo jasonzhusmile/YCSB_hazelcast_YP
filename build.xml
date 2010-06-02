@@ -37,7 +37,6 @@
 
    	<target name="dbcompile-mongodb" depends="compile">
 		<property name="db.dir" value="db/mongodb"/>
-   		<copy todir="${build.dir}/classes" file="${db.dir}/lib/log4j.xml" />
 		<antcall target="dbcompile"/>
 	</target>
 
