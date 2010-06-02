@@ -1,1 +1,7 @@
-This directory should contain jars for building and running MongoDB
+This directory should contain jars for building and running MongoDB.
+
+Required jars for current version of MongoDbClient:
+mongo-1.4.jar
+
+
+
