@@ -1,0 +1,24 @@
+CREATE TABLE IF NOT EXISTS `usertable` (
+`id` VARCHAR(100) PRIMARY KEY,
+`field0` VARCHAR(100),
+`field1` VARCHAR(100),
+`field2` VARCHAR(100),
+`field3` VARCHAR(100),
+`field4` VARCHAR(100),
+`field5` VARCHAR(100),
+`field6` VARCHAR(100),
+`field7` VARCHAR(100),
+`field8` VARCHAR(100),
+`field9` VARCHAR(100),
+`field10` VARCHAR(100),
+`field11` VARCHAR(100),
+`field12` VARCHAR(100),
+`field13` VARCHAR(100),
+`field14` VARCHAR(100),
+`field15` VARCHAR(100),
+`field16` VARCHAR(100),
+`field17` VARCHAR(100),
+`field18` VARCHAR(100),
+`field19` VARCHAR(100)
+)
+ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
