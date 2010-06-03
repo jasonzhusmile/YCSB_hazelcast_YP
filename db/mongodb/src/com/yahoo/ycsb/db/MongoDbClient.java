@@ -26,7 +26,7 @@ import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
 /**
- * MongoDB client for YCSB framework. <br/>
+ * MongoDB client for YCSB framework for Mongo DB Java driver 1.4. <br/>
  * 
  * Properties to set:<br/>
  * 
