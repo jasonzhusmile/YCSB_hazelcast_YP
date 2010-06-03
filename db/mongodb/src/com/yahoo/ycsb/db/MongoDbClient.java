@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.CommandResult;
@@ -39,7 +40,9 @@ import com.yahoo.ycsb.DBException;
  */
 public class MongoDbClient extends DB {
 
-    private Mongo mongo;
+    private static Mongo mongo;
+    private static final ReentrantLock _lock = new ReentrantLock();
+
     private WriteConcern writeConcern = WriteConcern.NORMAL;
     private String database;
 
@@ -62,27 +65,33 @@ public class MongoDbClient extends DB {
             writeConcern = WriteConcern.NORMAL;
         }
 
+        _lock.lock();
         try {
+            if (mongo == null) {
+                log("info", "Initializing Mongo connection...", null);
 
-            if (url == null || "".equals(url) || database == null
-                    || "".equals(database)) {
-                throw new RuntimeException(
-                        "mongodb.url or mongodb.database not specified!");
+                if (url == null || "".equals(url) || database == null
+                        || "".equals(database)) {
+                    throw new RuntimeException(
+                            "mongodb.url or mongodb.database not specified!");
+                }
+
+                // strip out prefix since Java driver doesn't currently support
+                // standard
+                // connection format URL yet
+                // http://www.mongodb.org/display/DOCS/Connections
+                if (url.startsWith("mongodb://")) {
+                    url = url.substring(10) + "/" + database;
+                }
+
+                mongo = new Mongo(new DBAddress(url));
             }
-
-            // strip out prefix since Java driver doesn't currently support
-            // standard
-            // connection format URL yet
-            // http://www.mongodb.org/display/DOCS/Connections
-            if (url.startsWith("mongodb://")) {
-                url = url.substring(10) + "/" + database;
-            }
-
-            mongo = new Mongo(new DBAddress(url));
         } catch (Exception e) {
             log("error", "Could not initialize MongoDb connection:  " + e, e);
             throw new DBException("Could not initialize MongoDb connection:  "
                     + e, e);
+        } finally {
+            _lock.unlock();
         }
 
     }
