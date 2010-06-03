@@ -1,0 +1,11 @@
+This directory should contain jars for building and running Mysql.
+
+Required libraries for current version of MysqlClient:
+
+* c3p0 JDBC library
+http://sourceforge.net/projects/c3p0/
+
+* Mysql Java connector 5.1.12
+http://dev.mysql.com/downloads/connector/j/
+
+
