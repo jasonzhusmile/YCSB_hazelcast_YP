@@ -10,7 +10,7 @@ if [ $# -lt 3 ] ; then
 fi
 
 java \
--cp ${YCSB_HOME}/build/ycsb.jar:${YCSB_HOME}/db/mongodb/lib/mongo-1.4.jar \
+-cp ${YCSB_HOME}/build/ycsb.jar:${YCSB_HOME}/db/mongodb/lib/mongo-2.0-rc4.jar \
 com.yahoo.ycsb.Client \
 -${1} \
 -threads ${2} \

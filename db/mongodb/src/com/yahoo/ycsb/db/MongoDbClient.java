@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import com.mongodb.BasicDBObject;
+import com.mongodb.CommandResult;
 import com.mongodb.DBAddress;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -107,9 +108,9 @@ public class MongoDbClient extends DB {
             collection.remove(q);
 
             // see if record was deleted
-            DBObject errors = db.getLastError();
+            CommandResult errors = db.getLastError();
 
-            return (Integer) errors.get("n") == 1 ? 0 : 1;
+            return errors.getInt("n") == 1 ? 0 : 1;
         } catch (Exception e) {
             log("error", e + "", e);
             return 1;
@@ -147,7 +148,7 @@ public class MongoDbClient extends DB {
 
             // determine if record was inserted, does not seem to return
             // n=<records affected> for insert
-            DBObject errors = db.getLastError();
+            CommandResult errors = db.getLastError();
 
             return (Boolean) errors.get("ok") && errors.get("err") == null ? 0
                     : 1;
@@ -247,9 +248,9 @@ public class MongoDbClient extends DB {
             collection.update(q, u);
 
             // determine if record was inserted
-            DBObject errors = db.getLastError();
+            CommandResult errors = db.getLastError();
 
-            return (Integer) errors.get("n") == 1 ? 0 : 1;
+            return errors.getInt("n") == 1 ? 0 : 1;
         } catch (Exception e) {
             log("error", e + "", e);
             return 1;
