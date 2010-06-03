@@ -17,8 +17,8 @@ com.yahoo.ycsb.Client \
 -db com.yahoo.ycsb.db.MysqlClient \
 -p mysql.driver=com.mysql.jdbc.Driver \
 -p mysql.url=jdbc:mysql://localhost:3306/ycsb \
--p mysql.user=root \
--p mysql.password=quaker17 \
+-p mysql.user=user \
+-p mysql.password=password \
 -p mysql.pool.min=10 \
 -p mysql.pool.max=20 \
 -p mysql.pool.acquireIncrement=5 \
