@@ -159,8 +159,7 @@ public class MongoDbClient extends DB {
             // n=<records affected> for insert
             CommandResult errors = db.getLastError();
 
-            return (Boolean) errors.get("ok") && errors.get("err") == null ? 0
-                    : 1;
+            return errors.ok() && errors.get("err") == null ? 0 : 1;
         } catch (Exception e) {
             log("error", e + "", e);
             return 1;
@@ -290,7 +289,7 @@ public class MongoDbClient extends DB {
             db = mongo.getDB(database);
             db.requestStart();
             DBCollection collection = db.getCollection(table);
-            // { "_id":{"$gte":startKey, "$lte":{"appId":key+"\uFFFF"}} }
+
             DBObject scanRange = new BasicDBObject().append("$gte", startkey);
             DBObject q = new BasicDBObject().append("_id", scanRange);
 
