@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
@@ -30,7 +31,7 @@ public class HazelcastClient extends DB {
 
     private int pollTimeoutMs = 100;
 
-    private com.hazelcast.client.HazelcastClient client;
+    private HazelcastInstance client;
 
     /*
      * (non-Javadoc)
@@ -41,7 +42,8 @@ public class HazelcastClient extends DB {
     public void init() throws DBException {
         super.init();
         if (System.getProperty("debug") != null) {
-            log("info", "Debug mode:  using data structure name 'default'", null);
+            log("info", "Debug mode:  using data structure name 'default'",
+                    null);
             this.debug = true;
         }
         Properties conf = this.getProperties();
@@ -56,17 +58,21 @@ public class HazelcastClient extends DB {
             if (pollTimeoutMs != null) {
                 this.pollTimeoutMs = Integer.parseInt(pollTimeoutMs);
             }
-            log("info", "QUEUE.poll timeout = " + this.pollTimeoutMs + " ms", null);
+            log("info", "QUEUE.poll timeout = " + this.pollTimeoutMs + " ms",
+                    null);
         } else if ("map".equalsIgnoreCase(dataStructureType)) {
             this.dataStructureType = MAP;
             log("info", "Testing MAP", null);
         } else {
-            log("error", "Unknown data structure type:  " + dataStructureType + "; please specify with 'hc.dataStructureType' property!", null);
+            log("error", "Unknown data structure type:  " + dataStructureType
+                    + "; please specify with 'hc.dataStructureType' property!",
+                    null);
             System.exit(1);
         }
 
         // check if we are using superclient mode
-        this.superclient = "true".equals(System.getProperty("hazelcast.super.client"));
+        this.superclient = "true".equals(System
+                .getProperty("hazelcast.super.client"));
 
         // not using superclient mode, so set up java client
         if (!superclient) {
@@ -75,10 +81,14 @@ public class HazelcastClient extends DB {
             String groupPassword = conf.getProperty("hc.groupPassword");
             String address = conf.getProperty("hc.address");
             if (address == null) {
-                log("error", "No cluster address specified for client!  Use 'hc.address'!", null);
+                log(
+                        "error",
+                        "No cluster address specified for client!  Use 'hc.address'!",
+                        null);
                 System.exit(1);
             }
-            this.client = com.hazelcast.client.HazelcastClient.newHazelcastClient(groupName, groupPassword, address);
+            this.client = com.hazelcast.client.HazelcastClient
+                    .newHazelcastClient(groupName, groupPassword, address);
         } else {
             log("info", "Using super client", null);
         }
@@ -165,7 +175,8 @@ public class HazelcastClient extends DB {
      * java.util.Set, java.util.HashMap)
      */
     @Override
-    public int read(String table, String key, Set<String> fields, HashMap<String, String> result) {
+    public int read(String table, String key, Set<String> fields,
+            HashMap<String, String> result) {
         if (debug)
             table = "default";
         try {
@@ -177,7 +188,8 @@ public class HazelcastClient extends DB {
                 break;
             case QUEUE:
                 BlockingQueue<Map<String, String>> distributedQueue = getQueue(table);
-                resultMap = distributedQueue.poll(this.pollTimeoutMs, TimeUnit.MILLISECONDS);
+                resultMap = distributedQueue.poll(this.pollTimeoutMs,
+                        TimeUnit.MILLISECONDS);
                 if (resultMap != null)
                     result.putAll(resultMap);
                 break;
@@ -196,8 +208,10 @@ public class HazelcastClient extends DB {
      * java.util.Set, java.util.Vector)
      */
     @Override
-    public int scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, String>> result) {
-        throw new UnsupportedOperationException("scan() is not supported at this time!");
+    public int scan(String table, String startkey, int recordcount,
+            Set<String> fields, Vector<HashMap<String, String>> result) {
+        throw new UnsupportedOperationException(
+                "scan() is not supported at this time!");
     }
 
     /*
