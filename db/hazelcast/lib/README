@@ -1,0 +1,8 @@
+This directory should contain jars for building and running Hazelcast.
+
+Required libraries for current version of HazelcastClient:
+
+* Hazelcast 1.8.5
+http://www.hazelcast.com/downloads.jsp
+
+
