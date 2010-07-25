@@ -11,8 +11,9 @@ fi
 
 java \
 -Ddebug=true \
--Xmx512M \
--cp ${YCSB_HOME}/build/ycsb.jar:${YCSB_HOME}/db/hazelcast/lib/hazelcast-1.8.5/lib/hazelcast-1.8.5.jar:${YCSB_HOME}/db/hazelcast/lib/hazelcast-1.8.5/lib/hazelcast-client-1.8.5.jar \
+-Xmx1024M \
+-Dhazelcast.super.client=true \
+-cp ${YCSB_HOME}/build/ycsb.jar:${YCSB_HOME}/db/hazelcast/lib/hazelcast-1.8.5/lib/hazelcast-1.8.5.jar:${YCSB_HOME}/db/hazelcast/lib/hazelcast-1.8.5/bin \
 com.yahoo.ycsb.Client \
 -${1} \
 -threads ${2} \
@@ -20,9 +21,6 @@ com.yahoo.ycsb.Client \
 -p measurementtype=histogram \
 -p hc.dataStructureType=${4} \
 -p hc.queuePollTimeoutMs=2000 \
--p hc.groupName=dev \
--p hc.groupPassword=dev-pass \
--p hc.address=127.0.0.1:5701 \
 -P ${YCSB_HOME}/workloads/${3}
 
 
