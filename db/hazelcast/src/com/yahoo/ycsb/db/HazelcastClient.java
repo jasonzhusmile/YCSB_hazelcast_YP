@@ -36,6 +36,9 @@ public class HazelcastClient extends DB {
 
     private static HazelcastInstance client;
 
+    private HashMap<String, ConcurrentMap<String, Map<String, String>>> mapMap = new HashMap<String, ConcurrentMap<String, Map<String, String>>>();
+    private HashMap<String, BlockingQueue<Map<String, String>>> queueMap = new HashMap<String, BlockingQueue<Map<String, String>>>();
+
     /*
      * (non-Javadoc)
      * 
@@ -110,21 +113,29 @@ public class HazelcastClient extends DB {
     }
 
     protected ConcurrentMap<String, Map<String, String>> getMap(String table) {
-        ConcurrentMap<String, Map<String, String>> retval = null;
-        if (this.superclient) {
-            retval = Hazelcast.getMap(table);
-        } else {
-            retval = client.getMap(table);
+        ConcurrentMap<String, Map<String, String>> retval = this.mapMap
+                .get(table);
+        if (retval == null) {
+            if (this.superclient) {
+                retval = Hazelcast.getMap(table);
+            } else {
+                retval = client.getMap(table);
+            }
+            this.mapMap.put(table, retval);
         }
         return retval;
     }
 
     protected BlockingQueue<Map<String, String>> getQueue(String table) {
-        BlockingQueue<Map<String, String>> retval = null;
-        if (this.superclient) {
-            retval = Hazelcast.getQueue(table);
-        } else {
-            retval = client.getQueue(table);
+        BlockingQueue<Map<String, String>> retval = (BlockingQueue<Map<String, String>>) this.queueMap
+                .get(table);
+        if (retval == null) {
+            if (this.superclient) {
+                retval = Hazelcast.getQueue(table);
+            } else {
+                retval = client.getQueue(table);
+            }
+            this.queueMap.put(table, retval);
         }
         return retval;
     }
