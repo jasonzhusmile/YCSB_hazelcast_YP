@@ -9,6 +9,7 @@ import java.util.Vector;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
@@ -25,13 +26,15 @@ public class HazelcastClient extends DB {
     private static final int MAP = 1;
     private static final int QUEUE = 2;
 
+    private static final ReentrantLock _lock = new ReentrantLock();
+
     private boolean debug = false;
     private boolean superclient = false;
     private int dataStructureType = 1;
 
     private int pollTimeoutMs = 100;
 
-    private HazelcastInstance client;
+    private static HazelcastInstance client;
 
     /*
      * (non-Javadoc)
@@ -76,19 +79,30 @@ public class HazelcastClient extends DB {
 
         // not using superclient mode, so set up java client
         if (!superclient) {
-            log("info", "Using regular Java client", null);
-            String groupName = conf.getProperty("hc.groupName");
-            String groupPassword = conf.getProperty("hc.groupPassword");
-            String address = conf.getProperty("hc.address");
-            if (address == null) {
-                log(
-                        "error",
-                        "No cluster address specified for client!  Use 'hc.address'!",
-                        null);
-                System.exit(1);
+            _lock.lock();
+            try {
+                if (client == null) {
+                    log("info", "Initializing Java client...", null);
+                    String groupName = conf.getProperty("hc.groupName");
+                    String groupPassword = conf.getProperty("hc.groupPassword");
+                    String address = conf.getProperty("hc.address");
+                    if (address == null) {
+                        log(
+                                "error",
+                                "No cluster address specified for client!  Use 'hc.address'!",
+                                null);
+                        System.exit(1);
+                    }
+                    client = com.hazelcast.client.HazelcastClient
+                            .newHazelcastClient(groupName, groupPassword,
+                                    address);
+                }
+            } catch (Exception e1) {
+                log("error", "Could not initialize Hazelcast Java client:  "
+                        + e1, e1);
+            } finally {
+                _lock.unlock();
             }
-            this.client = com.hazelcast.client.HazelcastClient
-                    .newHazelcastClient(groupName, groupPassword, address);
         } else {
             log("info", "Using super client", null);
         }
@@ -100,7 +114,7 @@ public class HazelcastClient extends DB {
         if (this.superclient) {
             retval = Hazelcast.getMap(table);
         } else {
-            retval = this.client.getMap(table);
+            retval = client.getMap(table);
         }
         return retval;
     }
@@ -110,7 +124,7 @@ public class HazelcastClient extends DB {
         if (this.superclient) {
             retval = Hazelcast.getQueue(table);
         } else {
-            retval = this.client.getQueue(table);
+            retval = client.getQueue(table);
         }
         return retval;
     }
