@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
@@ -36,7 +37,9 @@ public class HazelcastClient extends DB {
 
     private static HazelcastInstance _client;
 
-    private HashMap<String, ConcurrentMap<String, Map<String, String>>> mapMap = new HashMap<String, ConcurrentMap<String, Map<String, String>>>();
+    private boolean async = false;
+
+    private HashMap<String, IMap<String, Map<String, String>>> mapMap = new HashMap<String, IMap<String, Map<String, String>>>();
     private HashMap<String, BlockingQueue<Map<String, String>>> queueMap = new HashMap<String, BlockingQueue<Map<String, String>>>();
 
     /*
@@ -53,6 +56,13 @@ public class HazelcastClient extends DB {
             this.debug = true;
         }
         Properties conf = this.getProperties();
+
+        // check for async
+        this.async = "true".equals(conf.getProperty("hc.async"))
+                || "1".equals(conf.getProperty("hc.async"));
+        if (this.async) {
+            log("info", "Will do asynchronous puts when using MAP", null);
+        }
 
         // check for datastructure type
         String dataStructureType = conf.getProperty("hc.dataStructureType");
@@ -96,9 +106,11 @@ public class HazelcastClient extends DB {
                                 null);
                         System.exit(1);
                     }
+
                     _client = com.hazelcast.client.HazelcastClient
                             .newHazelcastClient(groupName, groupPassword,
                                     address);
+
                 }
             } catch (Exception e1) {
                 log("error", "Could not initialize Hazelcast Java client:  "
@@ -127,9 +139,9 @@ public class HazelcastClient extends DB {
         }
     }
 
-    protected ConcurrentMap<String, Map<String, String>> getMap(String table) {
-        ConcurrentMap<String, Map<String, String>> retval = this.mapMap
-                .get(table);
+    protected IMap<String, Map<String, String>> getMap(String table) {
+        IMap<String, Map<String, String>> retval = this.mapMap.get(table);
+
         if (retval == null) {
             if (this.superclient) {
                 retval = Hazelcast.getMap(table);
@@ -191,8 +203,12 @@ public class HazelcastClient extends DB {
         try {
             switch (this.dataStructureType) {
             case MAP:
-                ConcurrentMap<String, Map<String, String>> distributedMap = getMap(table);
-                distributedMap.put(key, values);
+                IMap<String, Map<String, String>> distributedMap = getMap(table);
+                if (this.async) {
+                    distributedMap.put(key, values);
+                } else {
+                    distributedMap.putAsync(key, values);
+                }
                 break;
             case QUEUE:
                 BlockingQueue<Map<String, String>> distributedQueue = getQueue(table);
@@ -267,7 +283,7 @@ public class HazelcastClient extends DB {
         try {
             switch (this.dataStructureType) {
             case MAP:
-                ConcurrentMap<String, Map<String, String>> distributedMap = getMap(table);
+                IMap<String, Map<String, String>> distributedMap = getMap(table);
                 if (values != null && values.size() > 0) {
                     Map<String, String> resultMap = distributedMap.get(key);
                     Iterator<String> iter = values.keySet().iterator();
@@ -276,7 +292,11 @@ public class HazelcastClient extends DB {
                         k = iter.next();
                         resultMap.put(k, values.get(k));
                     }
-                    distributedMap.put(key, resultMap);
+                    if (this.async) {
+                        distributedMap.putAsync(key, resultMap);
+                    } else {
+                        distributedMap.put(key, resultMap);
+                    }
                 }
                 break;
             }
