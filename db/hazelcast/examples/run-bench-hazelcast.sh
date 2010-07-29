@@ -23,6 +23,7 @@ com.yahoo.ycsb.Client \
 -p hc.groupName=dev \
 -p hc.groupPassword=dev-pass \
 -p hc.address=127.0.0.1:5701 \
+-p hc.async=true \
 -P ${YCSB_HOME}/workloads/${3}
 
 

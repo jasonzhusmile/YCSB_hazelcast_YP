@@ -21,6 +21,7 @@ com.yahoo.ycsb.Client \
 -p measurementtype=histogram \
 -p hc.dataStructureType=${4} \
 -p hc.queuePollTimeoutMs=2000 \
+-p hc.async=true \
 -P ${YCSB_HOME}/workloads/${3}
 
 
