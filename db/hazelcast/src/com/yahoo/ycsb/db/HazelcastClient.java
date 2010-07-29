@@ -34,7 +34,7 @@ public class HazelcastClient extends DB {
 
     private int pollTimeoutMs = 100;
 
-    private static HazelcastInstance client;
+    private static HazelcastInstance _client;
 
     private HashMap<String, ConcurrentMap<String, Map<String, String>>> mapMap = new HashMap<String, ConcurrentMap<String, Map<String, String>>>();
     private HashMap<String, BlockingQueue<Map<String, String>>> queueMap = new HashMap<String, BlockingQueue<Map<String, String>>>();
@@ -84,7 +84,7 @@ public class HazelcastClient extends DB {
         if (!superclient) {
             _lock.lock();
             try {
-                if (client == null) {
+                if (_client == null) {
                     log("info", "Initializing Java client...", null);
                     String groupName = conf.getProperty("hc.groupName");
                     String groupPassword = conf.getProperty("hc.groupPassword");
@@ -96,7 +96,7 @@ public class HazelcastClient extends DB {
                                 null);
                         System.exit(1);
                     }
-                    client = com.hazelcast.client.HazelcastClient
+                    _client = com.hazelcast.client.HazelcastClient
                             .newHazelcastClient(groupName, groupPassword,
                                     address);
                 }
@@ -112,6 +112,21 @@ public class HazelcastClient extends DB {
 
     }
 
+    public void cleanup() throws DBException {
+        _lock.lock();
+        try {
+            if (_client != null) {
+                log("info", "Shutting down client...", null);
+                _client.shutdown();
+                _client = null;
+            }
+        } catch (Exception e) {
+            throw new DBException(e);
+        } finally {
+            _lock.unlock();
+        }
+    }
+
     protected ConcurrentMap<String, Map<String, String>> getMap(String table) {
         ConcurrentMap<String, Map<String, String>> retval = this.mapMap
                 .get(table);
@@ -119,7 +134,7 @@ public class HazelcastClient extends DB {
             if (this.superclient) {
                 retval = Hazelcast.getMap(table);
             } else {
-                retval = client.getMap(table);
+                retval = _client.getMap(table);
             }
             this.mapMap.put(table, retval);
         }
@@ -133,7 +148,7 @@ public class HazelcastClient extends DB {
             if (this.superclient) {
                 retval = Hazelcast.getQueue(table);
             } else {
-                retval = client.getQueue(table);
+                retval = _client.getQueue(table);
             }
             this.queueMap.put(table, retval);
         }
