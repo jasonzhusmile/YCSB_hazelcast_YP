@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
@@ -34,9 +35,11 @@ public class HazelcastClient extends DB {
 
     private int pollTimeoutMs = 100;
 
+    private boolean async = false;
+
     private static HazelcastInstance client;
 
-    private HashMap<String, ConcurrentMap<String, Map<String, String>>> mapMap = new HashMap<String, ConcurrentMap<String, Map<String, String>>>();
+    private HashMap<String, IMap<String, Map<String, String>>> mapMap = new HashMap<String, IMap<String, Map<String, String>>>();
     private HashMap<String, BlockingQueue<Map<String, String>>> queueMap = new HashMap<String, BlockingQueue<Map<String, String>>>();
 
     /*
@@ -48,11 +51,16 @@ public class HazelcastClient extends DB {
     public void init() throws DBException {
         super.init();
         if (System.getProperty("debug") != null) {
-            log("info", "Debug mode:  using data structure name 'default'",
-                    null);
+            log("info", "Debug mode:  using data structure name 'default'", null);
             this.debug = true;
         }
         Properties conf = this.getProperties();
+
+        // check for async
+        this.async = "true".equals(conf.getProperty("hc.async")) || "1".equals(conf.getProperty("hc.async"));
+        if (this.async) {
+            log("info", "Will do asynchronous puts when using MAP", null);
+        }
 
         // check for datastructure type
         String dataStructureType = conf.getProperty("hc.dataStructureType");
@@ -64,21 +72,17 @@ public class HazelcastClient extends DB {
             if (pollTimeoutMs != null) {
                 this.pollTimeoutMs = Integer.parseInt(pollTimeoutMs);
             }
-            log("info", "QUEUE.poll timeout = " + this.pollTimeoutMs + " ms",
-                    null);
+            log("info", "QUEUE.poll timeout = " + this.pollTimeoutMs + " ms", null);
         } else if ("map".equalsIgnoreCase(dataStructureType)) {
             this.dataStructureType = MAP;
             log("info", "Testing MAP", null);
         } else {
-            log("error", "Unknown data structure type:  " + dataStructureType
-                    + "; please specify with 'hc.dataStructureType' property!",
-                    null);
+            log("error", "Unknown data structure type:  " + dataStructureType + "; please specify with 'hc.dataStructureType' property!", null);
             System.exit(1);
         }
 
         // check if we are using superclient mode
-        this.superclient = "true".equals(System
-                .getProperty("hazelcast.super.client"));
+        this.superclient = "true".equals(System.getProperty("hazelcast.super.client"));
 
         // not using superclient mode, so set up java client
         if (!superclient) {
@@ -90,19 +94,13 @@ public class HazelcastClient extends DB {
                     String groupPassword = conf.getProperty("hc.groupPassword");
                     String address = conf.getProperty("hc.address");
                     if (address == null) {
-                        log(
-                                "error",
-                                "No cluster address specified for client!  Use 'hc.address'!",
-                                null);
+                        log("error", "No cluster address specified for client!  Use 'hc.address'!", null);
                         System.exit(1);
                     }
-                    client = com.hazelcast.client.HazelcastClient
-                            .newHazelcastClient(groupName, groupPassword,
-                                    address);
+                    client = com.hazelcast.client.HazelcastClient.newHazelcastClient(groupName, groupPassword, address);
                 }
             } catch (Exception e1) {
-                log("error", "Could not initialize Hazelcast Java client:  "
-                        + e1, e1);
+                log("error", "Could not initialize Hazelcast Java client:  " + e1, e1);
             } finally {
                 _lock.unlock();
             }
@@ -112,9 +110,8 @@ public class HazelcastClient extends DB {
 
     }
 
-    protected ConcurrentMap<String, Map<String, String>> getMap(String table) {
-        ConcurrentMap<String, Map<String, String>> retval = this.mapMap
-                .get(table);
+    protected IMap<String, Map<String, String>> getMap(String table) {
+        IMap<String, Map<String, String>> retval = this.mapMap.get(table);
         if (retval == null) {
             if (this.superclient) {
                 retval = Hazelcast.getMap(table);
@@ -127,8 +124,7 @@ public class HazelcastClient extends DB {
     }
 
     protected BlockingQueue<Map<String, String>> getQueue(String table) {
-        BlockingQueue<Map<String, String>> retval = (BlockingQueue<Map<String, String>>) this.queueMap
-                .get(table);
+        BlockingQueue<Map<String, String>> retval = (BlockingQueue<Map<String, String>>) this.queueMap.get(table);
         if (retval == null) {
             if (this.superclient) {
                 retval = Hazelcast.getQueue(table);
@@ -176,8 +172,12 @@ public class HazelcastClient extends DB {
         try {
             switch (this.dataStructureType) {
             case MAP:
-                ConcurrentMap<String, Map<String, String>> distributedMap = getMap(table);
-                distributedMap.put(key, values);
+                IMap<String, Map<String, String>> distributedMap = getMap(table);
+                if (this.async) {
+                    distributedMap.put(key, values);
+                } else {
+                    distributedMap.putAsync(key, values);
+                }
                 break;
             case QUEUE:
                 BlockingQueue<Map<String, String>> distributedQueue = getQueue(table);
@@ -200,8 +200,7 @@ public class HazelcastClient extends DB {
      * java.util.Set, java.util.HashMap)
      */
     @Override
-    public int read(String table, String key, Set<String> fields,
-            HashMap<String, String> result) {
+    public int read(String table, String key, Set<String> fields, HashMap<String, String> result) {
         if (debug)
             table = "default";
         try {
@@ -213,8 +212,7 @@ public class HazelcastClient extends DB {
                 break;
             case QUEUE:
                 BlockingQueue<Map<String, String>> distributedQueue = getQueue(table);
-                resultMap = distributedQueue.poll(this.pollTimeoutMs,
-                        TimeUnit.MILLISECONDS);
+                resultMap = distributedQueue.poll(this.pollTimeoutMs, TimeUnit.MILLISECONDS);
                 if (resultMap != null)
                     result.putAll(resultMap);
                 break;
@@ -233,10 +231,8 @@ public class HazelcastClient extends DB {
      * java.util.Set, java.util.Vector)
      */
     @Override
-    public int scan(String table, String startkey, int recordcount,
-            Set<String> fields, Vector<HashMap<String, String>> result) {
-        throw new UnsupportedOperationException(
-                "scan() is not supported at this time!");
+    public int scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, String>> result) {
+        throw new UnsupportedOperationException("scan() is not supported at this time!");
     }
 
     /*
@@ -252,7 +248,7 @@ public class HazelcastClient extends DB {
         try {
             switch (this.dataStructureType) {
             case MAP:
-                ConcurrentMap<String, Map<String, String>> distributedMap = getMap(table);
+                IMap<String, Map<String, String>> distributedMap = getMap(table);
                 if (values != null && values.size() > 0) {
                     Map<String, String> resultMap = distributedMap.get(key);
                     Iterator<String> iter = values.keySet().iterator();
@@ -261,7 +257,11 @@ public class HazelcastClient extends DB {
                         k = iter.next();
                         resultMap.put(k, values.get(k));
                     }
-                    distributedMap.put(key, resultMap);
+                    if (this.async) {
+                        distributedMap.putAsync(key, resultMap);
+                    } else {
+                        distributedMap.put(key, resultMap);
+                    }
                 }
                 break;
             }
