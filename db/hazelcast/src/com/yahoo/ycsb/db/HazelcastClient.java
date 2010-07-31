@@ -115,6 +115,7 @@ public class HazelcastClient extends DB {
             } catch (Exception e1) {
                 log("error", "Could not initialize Hazelcast Java client:  "
                         + e1, e1);
+                System.exit(1);
             } finally {
                 _lock.unlock();
             }
@@ -123,7 +124,6 @@ public class HazelcastClient extends DB {
         }
 
     }
-
 
     protected IMap<String, Map<String, String>> getMap(String table) {
         IMap<String, Map<String, String>> retval = this.mapMap.get(table);
