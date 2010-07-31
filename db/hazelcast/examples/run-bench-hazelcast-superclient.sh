@@ -22,6 +22,7 @@ com.yahoo.ycsb.Client \
 -p hc.dataStructureType=${4} \
 -p hc.queuePollTimeoutMs=2000 \
 -p hc.async=true \
+-p hc.asyncTimeoutMs=50 \
 -P ${YCSB_HOME}/workloads/${3}
 
 

@@ -8,7 +8,9 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.hazelcast.core.Hazelcast;
@@ -33,11 +35,14 @@ public class HazelcastClient extends DB {
     private boolean superclient = false;
     private int dataStructureType = 1;
 
-    private int pollTimeoutMs = 100;
+    private int pollTimeoutMs = 50;
 
     private static HazelcastInstance _client;
 
     private boolean async = false;
+    private int asyncTimeoutMs = 50;
+
+    private static boolean infoEchoed = false;
 
     private HashMap<String, IMap<String, Map<String, String>>> mapMap = new HashMap<String, IMap<String, Map<String, String>>>();
     private HashMap<String, BlockingQueue<Map<String, String>>> queueMap = new HashMap<String, BlockingQueue<Map<String, String>>>();
@@ -51,8 +56,6 @@ public class HazelcastClient extends DB {
     public void init() throws DBException {
         super.init();
         if (System.getProperty("debug") != null) {
-            log("info", "Debug mode:  using data structure name 'default'",
-                    null);
             this.debug = true;
         }
         Properties conf = this.getProperties();
@@ -60,25 +63,24 @@ public class HazelcastClient extends DB {
         // check for async
         this.async = "true".equals(conf.getProperty("hc.async"))
                 || "1".equals(conf.getProperty("hc.async"));
-        if (this.async) {
-            log("info", "Will do asynchronous puts when using MAP", null);
+        String asyncTimeoutMs = conf.getProperty("hc.asyncTimeoutMs");
+        if (asyncTimeoutMs != null) {
+            this.asyncTimeoutMs = Integer.parseInt(asyncTimeoutMs);
         }
 
         // check for datastructure type
         String dataStructureType = conf.getProperty("hc.dataStructureType");
         if ("queue".equalsIgnoreCase(dataStructureType)) {
             this.dataStructureType = QUEUE;
-            log("info", "Testing QUEUE", null);
 
             String pollTimeoutMs = conf.getProperty("hc.queuePollTimeoutMs");
             if (pollTimeoutMs != null) {
                 this.pollTimeoutMs = Integer.parseInt(pollTimeoutMs);
             }
-            log("info", "QUEUE.poll timeout = " + this.pollTimeoutMs + " ms",
-                    null);
+
         } else if ("map".equalsIgnoreCase(dataStructureType)) {
             this.dataStructureType = MAP;
-            log("info", "Testing MAP", null);
+
         } else {
             log("error", "Unknown data structure type:  " + dataStructureType
                     + "; please specify with 'hc.dataStructureType' property!",
@@ -119,10 +121,38 @@ public class HazelcastClient extends DB {
             } finally {
                 _lock.unlock();
             }
-        } else {
-            log("info", "Using super client", null);
         }
 
+        // write out what/how client is testing to STDOUT
+        _lock.lock();
+        try {
+            if (!this.infoEchoed) {
+                if (this.debug) {
+                    log("info",
+                            "Debug mode:  using data structure name 'default'",
+                            null);
+                }
+                if (this.superclient) {
+                    log("info", "Using super client", null);
+                } else {
+                    log("info", "Using Java client", null);
+                }
+
+                log("info", "Testing data structure type:  "
+                        + dataStructureType, null);
+
+                log("info", "Queue poll timeout=" + this.pollTimeoutMs, null);
+
+                if (this.async) {
+                    log("info",
+                            "Will do asynchronous puts when using MAP:  timeout="
+                                    + this.asyncTimeoutMs, null);
+                }
+                this.infoEchoed = true;
+            }
+        } finally {
+            _lock.unlock();
+        }
     }
 
     protected IMap<String, Map<String, String>> getMap(String table) {
@@ -191,7 +221,13 @@ public class HazelcastClient extends DB {
             case MAP:
                 IMap<String, Map<String, String>> distributedMap = getMap(table);
                 if (this.async) {
-                    distributedMap.putAsync(key, values);
+                    try {
+                        Future<Map<String, String>> future = distributedMap
+                                .putAsync(key, values);
+                        future.get(10, TimeUnit.MILLISECONDS);
+                    } catch (TimeoutException t) {
+                        // time wasn't enough
+                    }
                 } else {
                     distributedMap.put(key, values);
                 }
@@ -279,7 +315,13 @@ public class HazelcastClient extends DB {
                         resultMap.put(k, values.get(k));
                     }
                     if (this.async) {
-                        distributedMap.putAsync(key, resultMap);
+                        try {
+                            Future<Map<String, String>> future = distributedMap
+                                    .putAsync(key, values);
+                            future.get(10, TimeUnit.MILLISECONDS);
+                        } catch (TimeoutException t) {
+                            // time wasn't enough
+                        }
                     } else {
                         distributedMap.put(key, resultMap);
                     }
