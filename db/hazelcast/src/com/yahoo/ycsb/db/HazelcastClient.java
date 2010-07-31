@@ -124,20 +124,6 @@ public class HazelcastClient extends DB {
 
     }
 
-    public void cleanup() throws DBException {
-        _lock.lock();
-        try {
-            if (_client != null) {
-                log("info", "Shutting down client...", null);
-                _client.shutdown();
-                _client = null;
-            }
-        } catch (Exception e) {
-            throw new DBException(e);
-        } finally {
-            _lock.unlock();
-        }
-    }
 
     protected IMap<String, Map<String, String>> getMap(String table) {
         IMap<String, Map<String, String>> retval = this.mapMap.get(table);
