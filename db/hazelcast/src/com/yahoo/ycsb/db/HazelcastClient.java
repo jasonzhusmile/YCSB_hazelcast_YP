@@ -224,7 +224,7 @@ public class HazelcastClient extends DB {
                     try {
                         Future<Map<String, String>> future = distributedMap
                                 .putAsync(key, values);
-                        future.get(10, TimeUnit.MILLISECONDS);
+                        future.get(this.asyncTimeoutMs, TimeUnit.MILLISECONDS);
                     } catch (TimeoutException t) {
                         // time wasn't enough
                     }
@@ -318,7 +318,8 @@ public class HazelcastClient extends DB {
                         try {
                             Future<Map<String, String>> future = distributedMap
                                     .putAsync(key, values);
-                            future.get(10, TimeUnit.MILLISECONDS);
+                            future.get(this.asyncTimeoutMs,
+                                    TimeUnit.MILLISECONDS);
                         } catch (TimeoutException t) {
                             // time wasn't enough
                         }
