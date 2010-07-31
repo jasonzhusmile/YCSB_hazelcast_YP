@@ -205,9 +205,9 @@ public class HazelcastClient extends DB {
             case MAP:
                 IMap<String, Map<String, String>> distributedMap = getMap(table);
                 if (this.async) {
-                    distributedMap.put(key, values);
-                } else {
                     distributedMap.putAsync(key, values);
+                } else {
+                    distributedMap.put(key, values);
                 }
                 break;
             case QUEUE:
